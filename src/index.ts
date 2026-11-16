@@ -115,22 +115,30 @@ async function newSession(): Promise<StreamableHTTPServerTransport> {
 }
 
 const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-  // Rejects every request that doesn't carry the bearer token.
-  if (req.headers.authorization !== `Bearer ${MCP_TOKEN}`) {
-    res.writeHead(401, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "unauthorized" }));
-    return;
-  }
-  if (req.url !== "/mcp") {
-    res.writeHead(404).end();
-    return;
-  }
+  console.log(`${req.method} ${req.url} session=${req.headers["mcp-session-id"] ?? "none"}`);
+  try {
+    // Rejects every request that doesn't carry the bearer token.
+    if (req.headers.authorization !== `Bearer ${MCP_TOKEN}`) {
+      res.writeHead(401, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+    if (req.url !== "/mcp") {
+      res.writeHead(404).end();
+      return;
+    }
 
-  // Reuses the client's session, or starts a new one.
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  const transport = (sessionId && sessions.get(sessionId)) || (await newSession());
+    // Reuses the client's session, or starts a new one.
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const transport = (sessionId && sessions.get(sessionId)) || (await newSession());
 
-  const body = req.method === "POST" ? await readJson(req) : undefined;
-  await transport.handleRequest(req, res, body);
+    const body = req.method === "POST" ? await readJson(req) : undefined;
+    await transport.handleRequest(req, res, body);
+  } catch (error) {
+    console.error("request failed:", error);
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "server error" }));
+    }
+  }
 });
 
 httpServer.listen(PORT, () => {
