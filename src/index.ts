@@ -115,14 +115,15 @@ async function newSession(): Promise<StreamableHTTPServerTransport> {
 }
 
 const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+  const url = new URL(req.url ?? "/", "http://localhost");
   console.log(`${req.method} ${req.url} session=${req.headers["mcp-session-id"] ?? "none"}`);
   try {
-    // Rejects every request that doesn't carry the bearer token.
-    if (req.headers.authorization !== `Bearer ${MCP_TOKEN}`) {
+    const tokenOk = req.headers.authorization === `Bearer ${MCP_TOKEN}` || url.searchParams.get("token") === MCP_TOKEN;
+    if (!tokenOk) {
       res.writeHead(401, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "unauthorized" }));
       return;
     }
-    if (req.url !== "/mcp") {
+    if (url.pathname !== "/mcp") {
       res.writeHead(404).end();
       return;
     }
