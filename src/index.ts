@@ -103,6 +103,7 @@ const sessions = new Map<string, StreamableHTTPServerTransport>();
 async function newSession(): Promise<StreamableHTTPServerTransport> {
   const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
+    enableJsonResponse: true,
     onsessioninitialized: (id: string) => {
       sessions.set(id, transport);
     },
