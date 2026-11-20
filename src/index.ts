@@ -52,8 +52,19 @@ function buildServer(): McpServer {
   // Order counts by status.
   server.registerTool(
     "get_orders_report",
-    { description: "Order counts by status (pending, processing, completed, and so on), all time." },
-    async () => asText(await wooReport("orders/totals")),
+    {
+      description:
+        "Order counts by status (pending, processing, completed, and so on), all time. Includes the total order count and each status's percent of all orders.",
+    },
+    async () => {
+      const rows = (await wooReport("orders/totals")) as { slug: string; name: string; total: number }[];
+      const allOrders = rows.reduce((sum, row) => sum + row.total, 0);
+      const statuses = rows.map((row) => ({
+        ...row,
+        percent: allOrders ? Math.round((row.total / allOrders) * 1000) / 10 : 0,
+      }));
+      return asText({ all_orders: allOrders, statuses });
+    },
   );
 
   // Product counts by type.
